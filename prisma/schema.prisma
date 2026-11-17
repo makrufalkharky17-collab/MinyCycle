@@ -1,0 +1,108 @@
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum JenisPenukaran {
+  UANG
+  MINYAK_GORENG
+}
+
+enum StatusPengajuan {
+  DATA_DITERIMA
+  PENJEMPUTAN
+  PENGECEKAN
+  PEMBAYARAN
+  SELESAI
+  TIDAK_VALID
+}
+
+enum RoleAdmin {
+  SUPER_ADMIN
+  ADMIN
+}
+
+model User {
+  id           Int         @id @default(autoincrement())
+  nama         String      @db.VarChar(100)
+  email        String      @unique @db.VarChar(150)
+  passwordHash String      @db.VarChar(255)
+  noWhatsapp   String      @db.VarChar(20)
+  alamat       String      @db.Text
+  aktif        Boolean     @default(true)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  pengajuan    Pengajuan[]
+}
+
+model Admin {
+  id           Int          @id @default(autoincrement())
+  nama         String       @db.VarChar(100)
+  email        String       @unique @db.VarChar(150)
+  passwordHash String       @db.VarChar(255)
+  role         RoleAdmin    @default(ADMIN)
+  aktif        Boolean      @default(true)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  riwayatStatus RiwayatStatus[]
+  harga         Harga[]
+}
+
+model Pengajuan {
+  id                  Int              @id @default(autoincrement())
+  userId              Int
+  jumlahLiter         Decimal          @db.Decimal(10, 2)
+  jenisPenukaran      JenisPenukaran
+  alamatPenjemputan   String           @db.Text
+  status              StatusPengajuan  @default(DATA_DITERIMA)
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  // Detail transaksi
+  volumeRiil                Decimal? @db.Decimal(10, 2)
+  namaPetugas               String?  @db.VarChar(100)
+  hargaPerLiter             Decimal? @db.Decimal(12, 2)
+  totalPembayaran           Decimal? @db.Decimal(12, 2)
+
+  // Detail penukaran minyak goreng
+  rasioJelantahPerLiter      Decimal? @db.Decimal(10, 2)
+  hasilHitungMinyakGoreng    Decimal? @db.Decimal(10, 2)
+  jumlahMinyakGoreng         Decimal? @db.Decimal(10, 2)
+
+  // Detail penolakan
+  alasanPenolakan            String?  @db.VarChar(150)
+  penjelasanPenolakan        String?  @db.Text
+
+  user                User             @relation(fields: [userId], references: [id])
+  riwayatStatus       RiwayatStatus[]
+}
+
+model RiwayatStatus {
+  id           Int              @id @default(autoincrement())
+  pengajuanId  Int
+  adminId      Int?
+  status       StatusPengajuan
+  keterangan   String?          @db.Text
+  createdAt    DateTime         @default(now())
+
+  pengajuan    Pengajuan        @relation(fields: [pengajuanId], references: [id])
+  admin        Admin?           @relation(fields: [adminId], references: [id])
+}
+
+model Harga {
+  id                       Int      @id @default(autoincrement())
+  hargaPerLiter            Decimal  @db.Decimal(12, 2)
+  rasioJelantahPerLiter     Decimal  @default(3) @db.Decimal(10, 2)
+  tanggalBerlaku           DateTime @default(now())
+  adminId                  Int
+  createdAt                DateTime @default(now())
+  catatan                  String?  @db.VarChar(255)
+
+  admin Admin @relation(fields: [adminId], references: [id])
+}
